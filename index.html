@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Sudoku Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="board"></div>
+<button onclick="solve()">Solve</button>
+<button onclick="reset()">Reset</button>
+
+<script>
+  // Sudoku puzzle data
+  const puzzle = [
+    [0,0,0,0,0,0,0,0,9],
+    [0,0,0,0,0,0,0,8,0],
+    [0,0,0,0,0,0,7,0,0],
+    [0,0,0,0,0,6,0,0,0],
+    [0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,1,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0],
+    [0,0,0,0,0,0,0,0,0]
+  ];
+
+  // Initialize the board
+  const board = document.getElementById("board");
+
+  for (let i = 0; i < 9; i++) {
+    for (let j = 0; j < 9; j++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+
+      if (puzzle[i][j] !== 0) {
+        cell.textContent = puzzle[i][j];
+        cell.classList.add("given");
+      } else {
+        cell.addEventListener("click", () => {
+          selectCell(i, j);
+        });
+      }
+
+      board.appendChild(cell);
+    }
+  }
+
+  // Current selected cell
+  let selectedCell = null;
+
+  // Select a cell
+  function selectCell(row, col) {
+    // Deselect the previously selected cell
+    if (selectedCell !== null) {
+      selectedCell.classList.remove("selected");
+    }
+
+    // Select the new cell
+    selectedCell = board.children[row * 9 + col];
+    selectedCell.classList.add("selected");
+
+    // Highlight cells
+    highlightCells(row, col);
+  }
+
+  // Highlight cells in the same row, column, or sub-grid
+  function highlightCells(row, col) {
+    const cells = document.getElementsByClassName("cell");
+
+    // Clear all previous highlights
+    for (let i = 0; i < cells.length; i++) {
+      cells[i].classList.remove("highlight");
+    }
+
+    // Highlight cells in the same row
+    for (let i = 0; i < 9; i++) {
+      const cell = cells[row * 9 + i];
+      cell.classList.add("highlight");
+    }
+
+    // Highlight cells in the same column
+    for (let i = 0; i < 9; i++) {
+      const cell = cells[i * 9 + col];
+      cell.classList.add("highlight");
+    }
+
+    // Highlight cells in the same sub-grid
+    const subgridRow = Math.floor(row / 3);
+    const subgridCol = Math.floor(col / 3);
+
+    for (let i = subgridRow * 3; i < subgridRow * 3 + 3; i++) {
+      for (let j = subgridCol * 3; j < subgridCol * 3 + 3; j++) {
+        const cell = cells[i * 9 + j];
+        cell.classList.add("highlight");
+      }
+    }
+  }
+
+  // Handle keyboard input
+  document.addEventListener("keydown", (event) => {
+    if (selectedCell !== null && selectedCell.classList.contains("given") === false) {
+      const key = event.key;
+
+      if (/^[1-9]$/.test(key)) {
+        // Valid input, update the board
+        selectedCell.textContent = key;
+
+        // Check the board for errors
+        if (!checkBoard()) {
+          alert("Invalid input, please check the board for errors.");
+        } else {
+          // Clear highlights and deselect cell
+          const cells = document.getElementsByClassName("cell");
+
+          for (let i = 0; i < cells.length; i++) {
+            cells[i].classList.remove("highlight");
+          }
+
+          selectedCell.classList.remove("selected");
+          selectedCell = null;
+
+          // Check if the board is complete
+          if (isComplete()) {
+            alert("Congratulations, you solved the puzzle!");
+          }
+        }
+      } else if (key === "Backspace" || key === "Delete") {
+        // Clear cell value
+        selectedCell.textContent = "";
+      }
+    }
+  });
+
+  // Check if the board is complete
+  function isComplete() {
+    const cells = document.getElementsByClassName("cell");
+
+    for (let i = 0; i < cells.length; i++) {
+      if (cells[i].textContent === "") {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // Check if an array contains all the numbers from 1 to 9 without duplicates
+  function checkArray(arr) {
+    const set = new Set(arr);
+
+    if (set.size !== arr.length) {
+      return false;
+    }
+
+    for (let i = 1; i <= 9; i++) {
+      if (!set.has(i.toString())) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // Check if the board is valid
+  function checkBoard() {
+    const cells = document.getElementsByClassName("cell");
+
+    for (let i = 0; i < 9; i++) {
+      const row = [], col = [], sub = [];
+
+      for (let j = 0; j < 9; j++) {
+        row.push(cells[i * 9 + j].textContent);
+        col.push(cells[j * 9 + i].textContent);
+
+        const subRowIndex = Math.floor(i / 3) * 3 + Math.floor(j / 3);
+        const subColIndex = (i % 3) * 3 + (j % 3);
+        sub.push(cells[subRowIndex * 9 + subColIndex].textContent);
+      }
+
+      if (!checkArray(row) || !checkArray(col) || !checkArray(sub)) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  // Solve the puzzle
+  function solve() {
+    if (!checkBoard()) {
+      alert("Invalid puzzle, cannot be solved!");
+      return;
+    }
+
+    const cells = document.getElementsByClassName("cell");
+    solveHelper(cells, 0);
+  }
+
+  // Helper function for solve()
+  function solveHelper(cells, index) {
+    if (index >= cells.length) {
+      // Solved!
+      return true;
+    }
+
+    const cell = cells[index];
+
+    if (cell.textContent !== "") {
+      // Cell is already filled, move to next one
+      return solveHelper(cells, index + 1);
+    }
+
+    // Try each possible value for the cell
+    for (let i = 1; i <= 9; i++) {
+      if (isValid(cells, cell, i)) {
+        cell.textContent = i.toString();
+
+        if (solveHelper(cells, index + 1)) {
+          return true;
+        }
+
+        cell.textContent = "";
+      }
+    }
+
+    // No valid value found for this cell, backtrack
+    return false;
+  }
+
+  // Check if a value is valid for a cell
+  function isValid(cells, cell, value) {
+    // Check row
+    for (let i = 0; i < 9; i++) {
+      if (cells[cell.parentElement.dataset.row * 9 + i].textContent === value.toString()) {
+        return false;
+      }
+    }
+
+    // Check column
+    for (let i = 0; i < 9; i++) {
+      if (cells[i * 9 + cell.dataset.col].textContent === value.toString()) {
+        return false;
+      }
+    }
+
+    // Check sub-grid
+    const subgridRow = Math.floor(cell.parentElement.dataset.row / 3) * 3;
+    const subgridCol = Math.floor(cell.dataset.col / 3) * 3;
+
+    for (let i = subgridRow; i < subgridRow + 3; i++) {
+      for (let j = subgridCol; j < subgridCol + 3; j++) {
+        if (cells[i * 9 + j].textContent === value.toString()) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  // Reset the board
+  function reset() {
+    const cells = document.getElementsByClassName("cell");
+
+    for (let i = 0; i < cells.length; i++) {
+      if (!cells[i].classList.contains("given")) {
+        cells[i].textContent = "";
+      }
+    }
+
+    selectedCell = null;
+    const highlights = document.getElementsByClassName("highlight");
+
+    while (highlights.length > 0) {
+      highlights[0].classList.remove("highlight");
+    }
+  }
+</script>
+</body>
+</html>
